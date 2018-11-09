@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 """
 自动更新DNS
 @author: New Future
@@ -32,23 +32,26 @@ def get_config(key=None, default=None, path="config.json"):
             print('Config file %s does not appear to exist.' % path)
             with open(path, 'w') as configfile:
                 configure = {
-                    "id": "your id",
-                    "token": "your token",
+                    "$schema": "https://ddns.newfuture.cc/schema.json",
+                    "id": "YOUR ID or EAMIL for DNS Provider",
+                    "token": "YOUR TOKEN or KEY for DNS Provider",
                     "dns": "dnspod",
                     "ipv4": [
-                        "your.domain",
-                        "ipv4.yours.domain"
+                        "newfuture.cc",
+                        "test-pc.newfuture.cc"
                     ],
                     "ipv6": [
-                        "your.domain",
-                        "ipv6.your.domain"
+                        "newfuture.cc",
+                        "test-pc.newfuture.cc",
+                        "ipv6.test-pc.newfuture.cc"
                     ],
                     "index4": "default",
                     "index6": "default",
-                    "proxy": None
+                    "proxy": None,
+                    "debug": False,
                 }
                 json.dump(configure, configfile, indent=2, sort_keys=True)
-            sys.exit("New template configure file is created!")
+            sys.exit("New template configure file [%s] is generated!" % path)
         except:
             sys.exit('fail to load config from file: %s' % path)
     if key:
@@ -61,8 +64,10 @@ def get_ip(ip_type):
     """
     get IP address
     """
-    index = get_config('index' + ip_type) or "default"
-    if str(index).isdigit():  # local eth
+    index = get_config('index' + ip_type, "default")
+    if index is False:  # disabled
+        return False
+    elif str(index).isdigit():  # local eth
         value = getattr(ip, "local_v" + ip_type)(index)
     elif any((c in index) for c in '*.:'):  # regex
         value = getattr(ip, "regex_v" + ip_type)(index)
@@ -105,7 +110,7 @@ def update_ip(ip_type, cache, dns, proxy_list):
     record_type = (ip_type == '4') and 'A' or 'AAAA'
     update_fail = False  # https://github.com/NewFuture/DDNS/issues/16
     for domain in domains:
-        if not change_dns_record(dns, proxy_list, domain=domain, ip=address, record_type=record_type):
+        if change_dns_record(dns, proxy_list, domain=domain, ip=address, record_type=record_type):
             update_fail = True
     if cache is not False:
         # 如果更新失败删除缓存
@@ -133,7 +138,7 @@ def main():
         print("Cache is disabled!")
     elif len(cache) < 1 or get_config.time >= cache.time:
         cache.clear()
-        print ("=" * 25, time.ctime(), "=" * 25, sep=' ')
+        print("=" * 25, time.ctime(), "=" * 25, sep=' ')
     update_ip('4', cache, dns, proxy_list)
     update_ip('6', cache, dns, proxy_list)
 
